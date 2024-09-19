@@ -271,7 +271,7 @@ class OpenAIModel(BaseModel):
             )
         else:
             api_base_url: str | None = keys_config.get("OPENAI_API_BASE_URL", None)
-            self.client = OpenAI(api_key=keys_config["OPENAI_API_KEY"], base_url=api_base_url)
+            self.client = OpenAI(api_key=keys_config["OPENAI_API_KEY"], organization=keys_config["OPENAI_ORG_ID"], base_url=api_base_url)
 
     def history_to_messages(
         self,

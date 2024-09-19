@@ -545,6 +545,7 @@ class Agent:
 
         for hook in self.hooks:
             hook.on_model_query(query=self.local_history, agent=self.name)
+        print("*****local history: ", self.local_history)
         return self.model.query(self.local_history)
 
     def retry_after_format_fail(self, output: str) -> str:
@@ -760,9 +761,7 @@ class Agent:
     def run(
         self,
         setup_args: dict[str, Any],
-        env: SWEEnv,
         observation: str | None = None,
-        traj_dir: Path | None = None,
         return_type: str | None = "info_trajectory",
         init_model_stats: APIStats | None = None,
     ):
@@ -786,14 +785,14 @@ class Agent:
         """
         done = False
         # mypy checks
-        assert env.container_obj is not None
-        assert env.record is not None
+        # assert env.container_obj is not None
+        # assert env.record is not None
         assert self.config is not None
 
-        if env.container_obj.id != self.last_container_id:
-            self.logger.info(f"Initializing agent settings for container {env.container_obj.id}")
-            self.init_environment_vars(env)
-            self.last_container_id = env.container_obj.id
+        # if env.container_obj.id != self.last_container_id:
+        #     self.logger.info(f"Initializing agent settings for container {env.container_obj.id}")
+        #     self.init_environment_vars(env)
+        #     self.last_container_id = env.container_obj.id
         # Re-initialize primary
         self.setup(setup_args, init_model_stats)
 
@@ -803,35 +802,37 @@ class Agent:
         # Run action/observation loop
         trajectory = []
         info = {}
-        traj_log_path = traj_dir / (env.record["instance_id"] + ".traj")
-        self.logger.info("Trajectory will be saved to %s", traj_log_path)
+        # traj_log_path = traj_dir / (env.record["instance_id"] + ".traj")
+        # self.logger.info("Trajectory will be saved to %s", traj_log_path)
         while not done:
             for hook in self.hooks:
                 hook.on_step_start()
-            state = env.communicate(self.state_command) if self.state_command else None
-            thought, action, output = self.forward(observation, env.get_available_actions(), state)
+            # state = env.communicate(self.state_command) if self.state_command else None
+            state = '''{"open_file": "n/a", "working_dir": "'$working_dir'"}'''
+            thought, action, output = self.forward(observation, [], state) # swe-agent has it empty too
             for hook in self.hooks:
                 hook.on_actions_generated(thought=thought, action=action, output=output)
-            observations = list()
-            run_action = self._guard_multiline_input(action)
-            for sub_action in self.split_actions(run_action):
-                if sub_action["agent"] == self.name or sub_action["cmd_name"] == self.config.submit_command:
-                    for hook in self.hooks:
-                        hook.on_sub_action_started(sub_action=sub_action)
-                    obs, _, done, info = env.step(sub_action["action"])
-                    for hook in self.hooks:
-                        hook.on_sub_action_executed(obs=obs, done=done)
-                    observations.append(obs)
-                    if sub_action["cmd_name"] == self.config.submit_command:
-                        done = True
-                    if done:
-                        break
-                else:
-                    agent_name = sub_action["agent"]
-                    sub_agent_output = self.call_subroutine(agent_name, sub_action, env)
-                    observations.append(sub_agent_output)
+            # observations = list()
+            # run_action = self._guard_multiline_input(action)
+            # for sub_action in self.split_actions(run_action):
+            #     if sub_action["agent"] == self.name or sub_action["cmd_name"] == self.config.submit_command:
+            #         for hook in self.hooks:
+            #             hook.on_sub_action_started(sub_action=sub_action)
+            #         obs, _, done, info = env.step(sub_action["action"])
+            #         for hook in self.hooks:
+            #             hook.on_sub_action_executed(obs=obs, done=done)
+            #         observations.append(obs)
+            #         if sub_action["cmd_name"] == self.config.submit_command:
+            #             done = True
+            #         if done:
+            #             break
+            #     else:
+            #         agent_name = sub_action["agent"]
+            #         sub_agent_output = self.call_subroutine(agent_name, sub_action, env)
+            #         observations.append(sub_agent_output)
 
-            observation = "\n".join([obs for obs in observations if obs is not None])
+            observation = ""
+            done = True
 
             trajectory_step = TrajectoryStep(
                 {
@@ -845,15 +846,18 @@ class Agent:
             trajectory.append(trajectory_step)
             model_stats: APIStats = self.model.stats
             info["model_stats"] = model_stats.to_dict()
-            if traj_dir:
-                self.save_trajectory(trajectory, traj_log_path, env_name=env.name, info=info)
-            for hook in self.hooks:
-                hook.on_step_done(trajectory_step=trajectory_step, model_stats=model_stats)
+
+            print("**********trajectory: ", trajectory)
+            print("**********info: ", info)
+            # if traj_dir:
+            #     self.save_trajectory(trajectory, traj_log_path, env_name=env.name, info=info)
+            # for hook in self.hooks:
+            #     hook.on_step_done(trajectory_step=trajectory_step, model_stats=model_stats)
 
         for hook in self.hooks:
             hook.on_run_done()
 
-        self.logger.info("Trajectory saved to %s", traj_log_path)
+        # self.logger.info("Trajectory saved to %s", traj_log_path)
 
         if return_type == "info":
             return info
