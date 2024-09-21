@@ -48,6 +48,8 @@ edit() {
         # set to START + num_lines - 1, unless num_lines is 0, then set to START
         export END_CURSOR=$((num_lines == 0 ? START_CURSOR : START_CURSOR + num_lines - 1))
         export START_CURSOR=$START_CURSOR
+        echo "END_CURSOR=$END_CURSOR"
+        echo "START_CURSOR=$START_CURSOR"
         _print
         echo "File updated. Please review the changes and make sure they are correct (correct indentation, no duplicate lines, etc). Edit the file again if necessary."
     else
@@ -66,6 +68,10 @@ edit() {
         export CURRENT_LINE=$(( (num_lines / 2) + start_line )) # Set to "center" of edit
         export WINDOW=$((num_lines + 10)) # Show +/- 5 lines around edit
         export END_CURSOR=$((num_lines == 0 ? START_CURSOR : START_CURSOR + num_lines - 1))
+        echo "CURRENT_LINE=$CURRENT_LINE"
+        echo "WINDOW=$WINDOW"
+        echo "END_CURSOR=$END_CURSOR"
+        
 
         echo "This is how your edit would have looked if applied"
         echo "-------------------------------------------------"
@@ -80,6 +86,9 @@ edit() {
         export CURRENT_LINE=$(( ((end_line - start_line) / 2) + start_line )) # Set to "center" of edit
         export WINDOW=$((end_line - start_line + 10))
         export END_CURSOR=$original_end_cursor
+        echo "CURRENT_LINE=$CURRENT_LINE"
+        echo "WINDOW=$WINDOW"
+        echo "END_CURSOR=$END_CURSOR"
 
         echo "This is the original code before your edit"
         echo "-------------------------------------------------"
@@ -91,6 +100,9 @@ edit() {
         export CURRENT_LINE=$original_current_line
         export WINDOW=$original_window
         export END_CURSOR=$original_end_cursor
+        echo "CURRENT_LINE=$CURRENT_LINE"
+        echo "WINDOW=$WINDOW"
+        echo "END_CURSOR=$END_CURSOR"
 
         echo "Your changes have NOT been applied. Please fix your edit command and try again."
         echo "You either need to 1) Specify the correct start/end line arguments or 2) Correct your edit code."

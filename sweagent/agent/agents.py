@@ -25,6 +25,7 @@ from sweagent.environment.swe_env import SWEEnv
 from sweagent.utils.config import convert_paths_to_abspath
 from sweagent.utils.log import get_logger
 
+from sweagent.agent.reproducibility_env import command_exec
 
 @dataclass(frozen=True)
 class Subroutine(FrozenSerializable):
@@ -545,7 +546,6 @@ class Agent:
 
         for hook in self.hooks:
             hook.on_model_query(query=self.local_history, agent=self.name)
-        print("*****local history: ", self.local_history)
         return self.model.query(self.local_history)
 
     def retry_after_format_fail(self, output: str) -> str:
@@ -764,6 +764,8 @@ class Agent:
         observation: str | None = None,
         return_type: str | None = "info_trajectory",
         init_model_stats: APIStats | None = None,
+        working_directory: str | None = None,
+        commands_dir: str | None = None,
     ):
         """
         Run the agent on an environment.
@@ -802,37 +804,21 @@ class Agent:
         # Run action/observation loop
         trajectory = []
         info = {}
+        env = {'START_CURSOR': "", 'END_CURSOR': "", 'CURRENT_FILE': "", 'CURRENT_LINE':"", 'WINDOW':""}
         # traj_log_path = traj_dir / (env.record["instance_id"] + ".traj")
         # self.logger.info("Trajectory will be saved to %s", traj_log_path)
         while not done:
             for hook in self.hooks:
                 hook.on_step_start()
             # state = env.communicate(self.state_command) if self.state_command else None
-            state = '''{"open_file": "n/a", "working_dir": "'$working_dir'"}'''
-            thought, action, output = self.forward(observation, [], state) # swe-agent has it empty too
+            state = f'''{{"open_file": "n/a", "working_dir": "{working_directory}"}}'''
+            thought, action, output = self.forward(observation, [], state) # swe-agent has action_list empty too
+            observation, working_directory, env = command_exec(output, working_directory, env, commands_dir)
+            print("***observation", observation)
+            if observation.startswith("reproducibility score = "):
+                done = True
             for hook in self.hooks:
                 hook.on_actions_generated(thought=thought, action=action, output=output)
-            # observations = list()
-            # run_action = self._guard_multiline_input(action)
-            # for sub_action in self.split_actions(run_action):
-            #     if sub_action["agent"] == self.name or sub_action["cmd_name"] == self.config.submit_command:
-            #         for hook in self.hooks:
-            #             hook.on_sub_action_started(sub_action=sub_action)
-            #         obs, _, done, info = env.step(sub_action["action"])
-            #         for hook in self.hooks:
-            #             hook.on_sub_action_executed(obs=obs, done=done)
-            #         observations.append(obs)
-            #         if sub_action["cmd_name"] == self.config.submit_command:
-            #             done = True
-            #         if done:
-            #             break
-            #     else:
-            #         agent_name = sub_action["agent"]
-            #         sub_agent_output = self.call_subroutine(agent_name, sub_action, env)
-            #         observations.append(sub_agent_output)
-
-            observation = ""
-            done = True
 
             trajectory_step = TrajectoryStep(
                 {
@@ -849,6 +835,7 @@ class Agent:
 
             print("**********trajectory: ", trajectory)
             print("**********info: ", info)
+            # done = True
             # if traj_dir:
             #     self.save_trajectory(trajectory, traj_log_path, env_name=env.name, info=info)
             # for hook in self.hooks:

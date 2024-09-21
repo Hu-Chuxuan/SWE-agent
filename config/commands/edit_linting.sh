@@ -82,6 +82,7 @@ edit() {
     # if there is no output, then the file is good
     if [ -z "$lint_output" ]; then
         export CURRENT_LINE=$start_line
+        echo "CURRENT_LINE=$CURRENT_LINE"
         _constrain_line
         _print
 
@@ -100,6 +101,9 @@ edit() {
         # Update values
         export CURRENT_LINE=$(( (line_count / 2) + start_line )) # Set to "center" of edit
         export WINDOW=$((line_count + 10)) # Show +/- 5 lines around edit
+        echo "CURRENT_LINE=$CURRENT_LINE"
+        echo "WINDOW=$WINDOW"
+
 
         echo "This is how your edit would have looked if applied"
         echo "-------------------------------------------------"
@@ -113,6 +117,8 @@ edit() {
 
         export CURRENT_LINE=$(( ((end_line - start_line + 1) / 2) + start_line ))
         export WINDOW=$((end_line - start_line + 10))
+        echo "CURRENT_LINE=$CURRENT_LINE"
+        echo "WINDOW=$WINDOW"
 
         echo "This is the original code before your edit"
         echo "-------------------------------------------------"
@@ -123,6 +129,8 @@ edit() {
         # Restore original values
         export CURRENT_LINE=$original_current_line
         export WINDOW=$original_window
+        echo "CURRENT_LINE=$CURRENT_LINE"
+        echo "WINDOW=$WINDOW"
 
         echo "Your changes have NOT been applied. Please fix your edit command and try again."
         echo "You either need to 1) Specify the correct start/end line arguments or 2) Correct your edit code."

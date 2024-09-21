@@ -69,7 +69,7 @@ class EnvironmentArguments(FrozenSerializable):
     # Use a persistent container with this name. After every task, the container will be paused, but not removed.
     # This is useful for speedup when running multiple tasks from the same repositories in a row, as the repositories
     # will have already been cloned and the conda environments will have been installed.
-    container_name: str | None = None
+    # container_name: str | None = None
     # Try to install the environment before running the task.
     install_environment: bool = True
     # No effect, kept for backwards compatibility.
