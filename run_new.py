@@ -1,11 +1,10 @@
 import argparse
+import os
 from sweagent.utils.config import keys_config
 from sweagent.agent.agents import Agent, AgentArguments
 from sweagent.agent.models import ModelArguments
 from sweagent import CONFIG_DIR
 from pdf_to_text import pdf_converter_partial, pdf_converter_full
-
-import subprocess
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -36,7 +35,8 @@ def main(partial, index, commands_dir):
         "tables": [item for item in reproduction_list if item.startswith('Table')],
         "figures": [item for item in reproduction_list if item.startswith('Figure')],
         "claims": [],
-        "paper_text": paper_text
+        "paper_text": paper_text,
+        "paper_path": os.path.abspath(pdf_path)
     }
 
     working_directory = f'{directory}/replication-package'

@@ -31,7 +31,7 @@ instance_template: |-
   Specifically, 
   1. we rate the reproducibility of the paper at a scale of from 1 to 4, where 1 means the main results of the paper is totally irreproducible; 2 means that there are some minor data (e.g., sample size, unclear data) or coding errors that affect main results; 3 means that there are some minor issues in the reproducation results, e.g., rounding differences; 4 means that the main results are totally reproducible. 
   2. we decide the score according to the reproduction results of these figures: {figures}, tables: {tables}, and text claims: {claims}.
-  3. here are the necessary text contents to reproduce the paper: {paper_text}. 
+  3. here is the path to the paper pdf: {paper_path}. we have extracted the necessary text contents to reproduce the paper for you: {paper_text}. you can also choose to extract the texts yourself.
 
   INSTRUCTIONS:
   Now, you're going to generate the reproducibility score on your own. Your terminal session has started and you're in the replication package provided by the author.
@@ -48,11 +48,9 @@ instance_template: |-
 
   2. If you open a file and need to get to an area around a specific line that is not in the first 100 lines, say line 583, don't just use the scroll_down command multiple times. Instead, use the goto 583 command. It's much quicker.
 
-  3. If the bug reproduction script requires inputting/reading a specific file, such as buggy-input.png, and you'd like to understand how to input that file, conduct a search in the existing repo code, to see whether someone else has already done that. Do this by running the command: find_file "buggy-input.png" If that doesn't work, use the linux 'find' command.
+  3. Always make sure to look at the currently open file and the current working directory (which appears right after the currently open file). The currently open file might be in a different directory than the working directory! Note that some commands, such as 'create', open files, so they might change the current  open file.
 
-  4. Always make sure to look at the currently open file and the current working directory (which appears right after the currently open file). The currently open file might be in a different directory than the working directory! Note that some commands, such as 'create', open files, so they might change the current  open file.
-
-  5. When editing files, it is easy to accidentally specify a wrong line number or to write code with incorrect indentation. Always check the code after you issue an edit to make sure that it reflects what you wanted to accomplish. If it didn't, issue another command to fix it.
+  4. When editing files, it is easy to accidentally specify a wrong line number or to write code with incorrect indentation. Always check the code after you issue an edit to make sure that it reflects what you wanted to accomplish. If it didn't, issue another command to fix it.
 
 
   (Open file: {open_file})
