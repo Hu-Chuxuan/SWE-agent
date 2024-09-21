@@ -810,11 +810,10 @@ class Agent:
         while not done:
             for hook in self.hooks:
                 hook.on_step_start()
-            # state = env.communicate(self.state_command) if self.state_command else None
-            state = f'''{{"open_file": "n/a", "working_dir": "{working_directory}"}}'''
+            state = f'''{{"open_file": "{env["CURRENT_LINE"]}", "working_dir": "{working_directory}"}}'''
             thought, action, output = self.forward(observation, [], state) # swe-agent has action_list empty too
             observation, working_directory, env = command_exec(output, working_directory, env, commands_dir)
-            print("***observation", observation)
+            print("***env", env)
             if observation.startswith("reproducibility score = "):
                 done = True
             for hook in self.hooks:
