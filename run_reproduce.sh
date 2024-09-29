@@ -26,10 +26,20 @@
 # echo "Script completed!"
 
 index=$1
-partial=$2
 commands_dir=$(realpath config/commands)
 
-echo "Running agent..."
-python3 run_new.py --index $index --partial $partial --commands_dir $commands_dir
+mkdir ./environment/$index
+mkdir ./environment/$index/work_dir
+cp ../reproducibility-bench02/$index/paper.pdf ./environment/$index/work_dir/
+cp -r ../reproducibility-bench02/$index/replication_package ./environment/$index/work_dir/
 
+echo "Running agent..."
+python3 run_new.py --index $index --commands_dir $commands_dir 2>&1 | tee ./environment/$index/output.txt
+
+if [ -f "./environment/$index/work_dir/reproducibility_score.json" ]; then
+    cp "./environment/$index/work_dir/reproducibility_score.json" "./environment/$index/"
+fi
+python3 evaluation.py --index $index
+
+rm -r ./environment/$index/work_dir/
 echo "Script completed!"

@@ -1,9 +1,7 @@
 # @yaml
 # signature: |-
-#   edit <start_line>:<end_line>
-#   <replacement_text>
-#   end_of_edit
-# docstring: replaces lines <start_line> through <end_line> (inclusive) with the given text in the open file. The replacement text is terminated by a line with only end_of_edit on it. All of the <replacement text> will be entered, so make sure your indentation is formatted properly. Python files will be checked for syntax errors after the edit. If the system detects a syntax error, the edit will not be executed. Simply try to edit the file again, but make sure to read the error message and modify the edit command you issue accordingly. Issuing the same command a second time will just lead to the same error message again.
+#   edit <start_line>:<end_line> "<replacement_text>"
+# docstring: replaces lines <start_line> through <end_line> (inclusive) with the given text in the open file. The replacement text should be provided as a string, with newlines preserved automatically. Python files will be checked for syntax errors after the edit. If the system detects a syntax error, the edit will not be executed. Simply try to edit the file again, but make sure to read the error message and modify the edit command you issue accordingly.
 # end_name: end_of_edit
 # arguments:
 #   start_line:
@@ -16,127 +14,85 @@
 #     required: true
 #   replacement_text:
 #     type: string
-#     description: the text to replace the current selection with
+#     description: the text to replace the current selection with, including any newline characters (multiline text will be handled automatically)
 #     required: true
 edit() {
-    if [ -z "$CURRENT_FILE" ]
-    then
+    if [ -z "$CURRENT_FILE" ]; then
         echo 'No file open. Use the `open` command first.'
         return
     fi
 
-    local start_line="$(echo $1: | cut -d: -f1)"
-    local end_line="$(echo $1: | cut -d: -f2)"
+    local start_line=$(echo "$1" | cut -d: -f1)
+    local end_line=$(echo "$1" | cut -d: -f2)
 
-    if [ -z "$start_line" ] || [ -z "$end_line" ]
-    then
-        echo "Usage: edit <start_line>:<end_line>"
+    if [ -z "$start_line" ] || [ -z "$end_line" ]; then
+        echo "Usage: edit <start_line>:<end_line> <replacement_text>"
         return
     fi
 
     local re='^[0-9]+$'
     if ! [[ $start_line =~ $re ]]; then
-        echo "Usage: edit <start_line>:<end_line>"
         echo "Error: start_line must be a number"
         return
     fi
     if ! [[ $end_line =~ $re ]]; then
-        echo "Usage: edit <start_line>:<end_line>"
         echo "Error: end_line must be a number"
+        return
+    fi
+
+    local replacement_text="$2"
+    if [ -z "$replacement_text" ]; then
+        echo "Error: replacement_text cannot be empty"
         return
     fi
 
     local linter_cmd="flake8 --isolated --select=F821,F822,F831,E111,E112,E113,E999,E902"
     local linter_before_edit=$($linter_cmd "$CURRENT_FILE" 2>&1)
 
-    # Bash array starts at 0, so let's adjust
+    # Adjust for 0-based indexing in arrays
     local start_line=$((start_line - 1))
     local end_line=$((end_line))
 
-    local line_count=0
-    local replacement=()
-    while IFS= read -r line
-    do
+    # Split the `replacement_text` into an array by newlines
+    IFS=$'\n'
+    replacement=()
+    while IFS= read -r line; do
         replacement+=("$line")
-        ((line_count++))
-    done
+    done <<< "$replacement_text"
 
-    # Create a backup of the current file
-    cp "$CURRENT_FILE" "/root/$(basename "$CURRENT_FILE")_backup"
+    # Backup current file in the current working directory
+    cp "$CURRENT_FILE" "$(basename "$CURRENT_FILE")_backup"
 
-    # Read the file line by line into an array
-    mapfile -t lines < "$CURRENT_FILE"
+    # Read the file line by line into an array (portable alternative to `mapfile`)
+    lines=()
+    while IFS= read -r line; do
+        lines+=("$line")
+    done < "$CURRENT_FILE"
+
+    # Replace the specified lines
     local new_lines=("${lines[@]:0:$start_line}" "${replacement[@]}" "${lines[@]:$((end_line))}")
-    # Write the new stuff directly back into the original file
+    
+    # Write the new content into the original file
     printf "%s\n" "${new_lines[@]}" >| "$CURRENT_FILE"
 
     # Run linter
     if [[ $CURRENT_FILE == *.py ]]; then
         _lint_output=$($linter_cmd "$CURRENT_FILE" 2>&1)
-        lint_output=$(_split_string "$_lint_output" "$linter_before_edit" "$((start_line+1))" "$end_line" "$line_count")
+        lint_output=$(_split_string "$_lint_output" "$linter_before_edit" "$((start_line+1))" "$end_line" "${#replacement[@]}")
     else
-        # do nothing
         lint_output=""
     fi
 
-    # if there is no output, then the file is good
+    # Handle linter output
     if [ -z "$lint_output" ]; then
-        export CURRENT_LINE=$start_line
-        echo "CURRENT_LINE=$CURRENT_LINE"
-        _constrain_line
-        _print
-
-        echo "File updated. Please review the changes and make sure they are correct (correct indentation, no duplicate lines, etc). Edit the file again if necessary."
+        echo "File updated successfully."
     else
-        echo "Your proposed edit has introduced new syntax error(s). Please read this error message carefully and then retry editing the file."
-        echo ""
-        echo "ERRORS:"
+        echo "Your edit introduced syntax errors:"
         echo "$lint_output"
-        echo ""
-
-        # Save original values
-        original_current_line=$CURRENT_LINE
-        original_window=$WINDOW
-
-        # Update values
-        export CURRENT_LINE=$(( (line_count / 2) + start_line )) # Set to "center" of edit
-        export WINDOW=$((line_count + 10)) # Show +/- 5 lines around edit
-        echo "CURRENT_LINE=$CURRENT_LINE"
-        echo "WINDOW=$WINDOW"
-
-
-        echo "This is how your edit would have looked if applied"
-        echo "-------------------------------------------------"
-        _constrain_line
-        _print
-        echo "-------------------------------------------------"
-        echo ""
-
-        # Restoring CURRENT_FILE to original contents.
-        cp "/root/$(basename "$CURRENT_FILE")_backup" "$CURRENT_FILE"
-
-        export CURRENT_LINE=$(( ((end_line - start_line + 1) / 2) + start_line ))
-        export WINDOW=$((end_line - start_line + 10))
-        echo "CURRENT_LINE=$CURRENT_LINE"
-        echo "WINDOW=$WINDOW"
-
-        echo "This is the original code before your edit"
-        echo "-------------------------------------------------"
-        _constrain_line
-        _print
-        echo "-------------------------------------------------"
-
-        # Restore original values
-        export CURRENT_LINE=$original_current_line
-        export WINDOW=$original_window
-        echo "CURRENT_LINE=$CURRENT_LINE"
-        echo "WINDOW=$WINDOW"
-
-        echo "Your changes have NOT been applied. Please fix your edit command and try again."
-        echo "You either need to 1) Specify the correct start/end line arguments or 2) Correct your edit code."
-        echo "DO NOT re-run the same failed edit command. Running it again will lead to the same error."
+        cp "$(basename "$CURRENT_FILE")_backup" "$CURRENT_FILE"  # Restore the original file
+        echo "Changes reverted. Please correct your edit."
     fi
 
-    # Remove backup file
-    rm -f "/root/$(basename "$CURRENT_FILE")_backup"
+    # Clean up backup
+    rm -f "$(basename "$CURRENT_FILE")_backup"
 }

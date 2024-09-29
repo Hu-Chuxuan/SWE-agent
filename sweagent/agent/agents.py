@@ -766,6 +766,7 @@ class Agent:
         init_model_stats: APIStats | None = None,
         working_directory: str | None = None,
         commands_dir: str | None = None,
+        paper_id: str | None = None,
     ):
         """
         Run the agent on an environment.
@@ -804,18 +805,24 @@ class Agent:
         # Run action/observation loop
         trajectory = []
         info = {}
+        costs = []
+        steps = 0
         env = {'START_CURSOR': "", 'END_CURSOR': "", 'CURRENT_FILE': "", 'CURRENT_LINE':"", 'WINDOW':""}
         # traj_log_path = traj_dir / (env.record["instance_id"] + ".traj")
         # self.logger.info("Trajectory will be saved to %s", traj_log_path)
         while not done:
             for hook in self.hooks:
                 hook.on_step_start()
-            state = f'''{{"open_file": "{env["CURRENT_LINE"]}", "working_dir": "{working_directory}"}}'''
+            state = f'''{{"open_file": "{env["CURRENT_FILE"]}", "working_dir": "{working_directory}", "command_number":"{steps}"}}'''
+            steps += 1
             thought, action, output = self.forward(observation, [], state) # swe-agent has action_list empty too
-            observation, working_directory, env = command_exec(output, working_directory, env, commands_dir)
-            print("***env", env)
-            if observation.startswith("reproducibility score = "):
+            action = action.strip()
+            if action == "submit" or action.startswith("exit"):
                 done = True
+            else:
+                observation, working_directory, env = command_exec(output, working_directory, env, commands_dir)
+            print("***env", env)
+
             for hook in self.hooks:
                 hook.on_actions_generated(thought=thought, action=action, output=output)
 
@@ -839,6 +846,9 @@ class Agent:
             #     self.save_trajectory(trajectory, traj_log_path, env_name=env.name, info=info)
             # for hook in self.hooks:
             #     hook.on_step_done(trajectory_step=trajectory_step, model_stats=model_stats)
+            costs.append(self.model.stats.instance_cost)
+            with open(f"./environment/{paper_id}/costs.json", 'w') as file:
+                json.dump(costs, file)
 
         for hook in self.hooks:
             hook.on_run_done()

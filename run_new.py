@@ -16,36 +16,34 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def main(partial, index, commands_dir):
-    directory = f"../reproducibility-bench02/{index}"
-    pdf_path = directory + "/paper.pdf"
-    should_reproduce_path = directory + "/should_reproduce.txt"
+def main(index, commands_dir):
+    should_reproduce_path = f"../reproducibility-bench02/{index}" + "/should_reproduce.txt"
     with open(should_reproduce_path, 'r') as file:
         reproduction_list = [line.strip() for line in file.readlines() if len(line.strip()) > 0]
     print(reproduction_list)
 
-    if partial:
-        # should reproduce list
-        paper_text = pdf_converter_partial(keys_config["OPENAI_API_KEY"], keys_config["OPENAI_ORG_ID"], pdf_path, reproduction_list)
-    else:
-        paper_text = pdf_converter_full(pdf_path)
+    # if partial:
+    #     # should reproduce list
+    #     paper_text = pdf_converter_partial(keys_config["OPENAI_API_KEY"], keys_config["OPENAI_ORG_ID"], pdf_path, reproduction_list)
+    # else:
+    #     paper_text = pdf_converter_full(pdf_path)
 
     observation = None  # swe-agent also does this
     setup_args = {
         "tables": [item for item in reproduction_list if item.startswith('Table')],
         "figures": [item for item in reproduction_list if item.startswith('Figure')],
-        "claims": [],
-        "paper_text": paper_text,
-        "paper_path": os.path.abspath(pdf_path)
+        # "claims": [],
+        # "paper_text": paper_text,
+        # "paper_path": os.path.abspath(pdf_path)
     }
 
-    working_directory = f'{directory}/replication-package'
+    working_directory = f"./environment/{index}/work_dir"
 
     agent_arg = AgentArguments(
         model=ModelArguments(
-            model_name="gpt4",
+            model_name="gpt4o", # can also change to 4o-mini
             total_cost_limit=0.0,
-            per_instance_cost_limit=3.0,
+            per_instance_cost_limit=5,
             temperature=0.0,
             top_p=0.95,
         ),
@@ -58,21 +56,21 @@ def main(partial, index, commands_dir):
         observation=observation,
         return_type="info_trajectory",
         working_directory=working_directory,
-        commands_dir=commands_dir
+        commands_dir=commands_dir,
+        paper_id=index
     )
 
 if __name__ == "__main__":
 
     # Setup argument parsing
     parser = argparse.ArgumentParser()
-    parser.add_argument('--partial', type=str2bool, default=False)
     parser.add_argument('--index', type=int, required=True)
     parser.add_argument('--commands_dir', type=str, required=True)
 
     args = parser.parse_args()
 
     # Run the main function with parsed arguments
-    main(partial=args.partial, index=args.index, commands_dir=args.commands_dir)
+    main(index=args.index, commands_dir=args.commands_dir)
 
     # command = """
     # source config/commands/cursors_defaults.sh &&

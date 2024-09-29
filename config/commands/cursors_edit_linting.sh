@@ -11,103 +11,77 @@
 #     description: the text to replace the current selection with
 #     required: true
 edit() {
-    if [ -z "$CURRENT_FILE" ]
-    then
+    if [ -z "$CURRENT_FILE" ]; then
         echo 'No file open. Use the `open` command first.'
         return
     fi
+
     local start_line=$((START_CURSOR - 1))
     start_line=$((start_line < 0 ? 0 : start_line))
     local end_line=$((END_CURSOR))
     end_line=$((end_line < 0 ? 0 : end_line))
 
+    local replacement_text="$1"
+    if [ -z "$replacement_text" ]; then
+        echo "Error: replacement_text cannot be empty"
+        return
+    fi
+
     local replacement=()
-    while IFS= read -r line
-    do
+    while IFS= read -r line; do
         replacement+=("$line")
-    done
+    done <<< "$replacement_text"
 
     local num_lines=${#replacement[@]}
-    # Create a backup of the current file
-    cp "$CURRENT_FILE" "/root/$(basename "$CURRENT_FILE")_backup"
-    # Read the file line by line into an array
-    mapfile -t lines < "$CURRENT_FILE"
+
+    # Create a backup of the current file in the current working directory
+    cp "$CURRENT_FILE" "$(basename "$CURRENT_FILE")_backup"
+
+    # Read the file line by line into an array (portable replacement for mapfile)
+    lines=()
+    while IFS= read -r line; do
+        lines+=("$line")
+    done < "$CURRENT_FILE"
+
+    # Replace lines between START_CURSOR and END_CURSOR with replacement text
     local new_lines=("${lines[@]:0:$start_line}" "${replacement[@]}" "${lines[@]:$((end_line))}")
-    # Write the new stuff directly back into the original file
+
+    # Write the new content back into the original file
     printf "%s\n" "${new_lines[@]}" >| "$CURRENT_FILE"
-    # Run linter
+
+    # Run linter for Python files
     if [[ $CURRENT_FILE == *.py ]]; then
         lint_output=$(flake8 --isolated --select=F821,F822,F831,E111,E112,E113,E999,E902 "$CURRENT_FILE" 2>&1)
     else
-        # do nothing
         lint_output=""
     fi
-    # if there is no output, then the file is good
+
+    # Check if there are any linter errors
     if [ -z "$lint_output" ]; then
-        _constrain_line
-        # set to START + num_lines - 1, unless num_lines is 0, then set to START
+        # Update START and END cursors based on the number of lines edited
         export END_CURSOR=$((num_lines == 0 ? START_CURSOR : START_CURSOR + num_lines - 1))
         export START_CURSOR=$START_CURSOR
         echo "END_CURSOR=$END_CURSOR"
         echo "START_CURSOR=$START_CURSOR"
         _print
-        echo "File updated. Please review the changes and make sure they are correct (correct indentation, no duplicate lines, etc). Edit the file again if necessary."
+        echo "File updated successfully. Please review the changes to ensure everything is correct."
     else
-        echo "Your proposed edit has introduced new syntax error(s). Please read this error message carefully and then retry editing the file."
-        echo ""
-        echo "ERRORS:"
-        _split_string "$lint_output"
-        echo ""
+        # Display syntax errors and revert changes
+        echo "Your proposed edit has introduced new syntax error(s). Please read the following error(s):"
+        echo "$lint_output"
 
-        # Save original values
-        original_current_line=$CURRENT_LINE
-        original_window=$WINDOW
-        original_end_cursor=$END_CURSOR
+        # Restore the original file content
+        cp "$(basename "$CURRENT_FILE")_backup" "$CURRENT_FILE"
+        echo "Changes reverted. Please correct your edit and try again."
 
-        # Update values
-        export CURRENT_LINE=$(( (num_lines / 2) + start_line )) # Set to "center" of edit
-        export WINDOW=$((num_lines + 10)) # Show +/- 5 lines around edit
-        export END_CURSOR=$((num_lines == 0 ? START_CURSOR : START_CURSOR + num_lines - 1))
-        echo "CURRENT_LINE=$CURRENT_LINE"
-        echo "WINDOW=$WINDOW"
-        echo "END_CURSOR=$END_CURSOR"
-        
-
-        echo "This is how your edit would have looked if applied"
-        echo "-------------------------------------------------"
-        _constrain_line
-        _print
-        echo "-------------------------------------------------"
-        echo ""
-
-        # Restoring CURRENT_FILE to original contents.
-        cp "/root/$(basename "$CURRENT_FILE")_backup" "$CURRENT_FILE"
-
-        export CURRENT_LINE=$(( ((end_line - start_line) / 2) + start_line )) # Set to "center" of edit
+        # Display the original code before the failed edit
+        export CURRENT_LINE=$(( ((end_line - start_line) / 2) + start_line ))
         export WINDOW=$((end_line - start_line + 10))
-        export END_CURSOR=$original_end_cursor
-        echo "CURRENT_LINE=$CURRENT_LINE"
-        echo "WINDOW=$WINDOW"
-        echo "END_CURSOR=$END_CURSOR"
-
-        echo "This is the original code before your edit"
-        echo "-------------------------------------------------"
+        echo "This is the original code before your edit:"
         _constrain_line
         _print
-        echo "-------------------------------------------------"
-
-        # Restore original values
-        export CURRENT_LINE=$original_current_line
-        export WINDOW=$original_window
-        export END_CURSOR=$original_end_cursor
-        echo "CURRENT_LINE=$CURRENT_LINE"
-        echo "WINDOW=$WINDOW"
-        echo "END_CURSOR=$END_CURSOR"
-
-        echo "Your changes have NOT been applied. Please fix your edit command and try again."
-        echo "You either need to 1) Specify the correct start/end line arguments or 2) Correct your edit code."
-        echo "DO NOT re-run the same failed edit command. Running it again will lead to the same error."
     fi
-    # Remove backup file
-    rm -f "/root/$(basename "$CURRENT_FILE")_backup"
+
+    # Clean up: remove the backup file
+    rm -f "$(basename "$CURRENT_FILE")_backup"
 }

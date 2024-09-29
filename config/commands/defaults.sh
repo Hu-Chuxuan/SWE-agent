@@ -139,7 +139,6 @@ scroll_down() {
     echo "CURRENT_LINE=$CURRENT_LINE"
     _constrain_line
     _print
-    _scroll_warning_message
 }
 
 # @yaml
@@ -155,7 +154,6 @@ scroll_up() {
     echo "CURRENT_LINE=$CURRENT_LINE"
     _constrain_line
     _print
-    _scroll_warning_message
 }
 
 # @yaml
