@@ -6,6 +6,7 @@ system_template: |-
 
   COMMANDS:
   {command_docs}
+  The stata version is SE, i.e., the right STATA command is `stata-se`.
 
   Please note that THE EDIT COMMAND REQUIRES PROPER INDENTATION.
   If you'd like to add the line '        print(x)' you must fully write that out, with all those spaces before the code! Indentation is important and code that is not indented correctly will fail and require fixing before it can be run.
