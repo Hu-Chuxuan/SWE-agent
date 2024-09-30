@@ -32,7 +32,7 @@ def main(index, commands_dir):
     setup_args = {
         "tables": [item for item in reproduction_list if item.startswith('Table')],
         "figures": [item for item in reproduction_list if item.startswith('Figure')],
-        # "claims": [],
+        "claims": [item for item in reproduction_list if item.startswith('Claim')]
         # "paper_text": paper_text,
         # "paper_path": os.path.abspath(pdf_path)
     }

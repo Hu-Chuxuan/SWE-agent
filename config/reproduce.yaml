@@ -35,7 +35,7 @@ instance_template: |-
       2: there are minor inconsistencies and/or errors in the provided data and/or code,
       3: there are rounding errors or equivalent issues in the major findings,
       4: major findings of the paper are fully reproducible.
-  2. we decide the score according to the reproduction results of the main findings of the paper, which include these figures: {figures}, tables: {tables}, and text claims: highlighted in the paper pdf, if any.
+  2. we decide the score according to the reproduction results of the main findings of the paper, which include these figures: {figures}, tables: {tables}, and text claims: {claims}.
 
   INSTRUCTIONS:
   Now, you're going to generate the reproducibility score on your own. You are already at a folder containing both the paper PDF and the replication package.
